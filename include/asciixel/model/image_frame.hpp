@@ -21,6 +21,11 @@ struct ImageFrame {
     {
         return pixels[y * width + x];
     }
+    
+    ImagePixel at(std::size_t x, std::size_t y) const
+    {
+        return pixels[y * width + x];
+    }
 };
 
 } // namespace asciixel
