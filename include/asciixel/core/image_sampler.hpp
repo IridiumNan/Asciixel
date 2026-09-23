@@ -9,10 +9,10 @@ namespace asciixel {
 class ImageSampler {
 private:
     static ImagePixel sampleBlock(const ImageFrame& frame,
-                             std::size_t       x_start,
-                             std::size_t       y_start,
-                             std::size_t       x_end,
-                             std::size_t       y_end);
+                                  std::size_t       x_start,
+                                  std::size_t       y_start,
+                                  std::size_t       x_end,
+                                  std::size_t       y_end);
 
 public:
     static ImageFrame sample(const ImageFrame& frame,
