@@ -10,6 +10,7 @@ add_subdirectory(third_party/freetype-2.14.3 EXCLUDE_FROM_ALL)
 add_library(asciixel_core STATIC
 	src/core/image_sampler.cpp
 	src/core/charset_builder.cpp
+	src/config/charset_config.cpp
 )
 
 target_link_libraries(asciixel_core PRIVATE freetype)
@@ -28,5 +29,15 @@ if(BUILD_TESTING)
 	target_link_libraries(test_image_sampler PRIVATE asciixel_core)
 
 	add_test(NAME image_sampler COMMAND test_image_sampler)
+
+	add_executable(test_charset_config tests/test_charset_config.cpp)
+	target_link_libraries(test_charset_config PRIVATE asciixel_core)
+	add_test(NAME charset_config COMMAND test_charset_config)
+
+	add_executable(test_charset_builder tests/test_charset_builder.cpp)
+	target_link_libraries(test_charset_builder PRIVATE asciixel_core)
+	if(WIN32 AND EXISTS "C:/Windows/Fonts/consola.ttf")
+		add_test(NAME charset_builder COMMAND test_charset_builder "C:/Windows/Fonts/consola.ttf")
+	endif()
 endif()
 

@@ -10,14 +10,14 @@ namespace asciixel {
 namespace {
 
 using LibraryHandle = std::unique_ptr<FT_LibraryRec_, decltype(&FT_Done_FreeType)>;
-using FaceHandle = std::unique_ptr<FT_FaceRec_, decltype(&FT_Done_Face)>;
+using FaceHandle    = std::unique_ptr<FT_FaceRec_, decltype(&FT_Done_Face)>;
 
 struct Font {
     LibraryHandle library;
-    FaceHandle face;
+    FaceHandle    face;
 };
 
-Font loadFont(const std::string& font_path)
+Font loadFont(const std::string& font_path, unsigned pixel_size)
 {
     FT_Library raw_library = nullptr;
     if (FT_Init_FreeType(&raw_library)) {
@@ -30,7 +30,7 @@ Font loadFont(const std::string& font_path)
         throw std::runtime_error("Cannot load font: " + font_path);
     }
     FaceHandle face(raw_face, FT_Done_Face);
-    if (FT_Set_Pixel_Sizes(face.get(), 0, 24)) {
+    if (FT_Set_Pixel_Sizes(face.get(), 0, pixel_size)) {
         throw std::runtime_error("Cannot set font size");
     }
     return {std::move(library), std::move(face)};
@@ -87,10 +87,11 @@ void normalizeBrightness(AsciiCharset& charset)
 
 } // namespace
 
-AsciiCharset CharsetBuilder::buildCharset(const std::string& font_path)
+AsciiCharset CharsetBuilder::buildCharset(const CharsetConfig& config)
 {
-    Font font = loadFont(font_path);
-    FT_Face face = font.face.get();
+    config.validate();
+    Font         font = loadFont(config.font_path, config.pixel_size);
+    FT_Face      face = font.face.get();
     AsciiCharset charset;
     // Every glyph uses the same cell area, including the space.
     if (FT_Load_Char(face, ' ', FT_LOAD_DEFAULT)) {
@@ -101,10 +102,7 @@ AsciiCharset CharsetBuilder::buildCharset(const std::string& font_path)
     if (width <= 0 || height <= 0) {
         throw std::runtime_error("Invalid font cell size");
     }
-    for (int ch = 32; ch <= 126; ++ch) {
-        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
-            continue;
-        }
+    for (unsigned char ch : config.candidates) {
         const BitmapView bitmap = getBitmap(face, ch);
         charset.glyphs.push_back({static_cast<char>(ch),
                                   calculateBrightness(bitmap, width, height)});
@@ -115,11 +113,6 @@ AsciiCharset CharsetBuilder::buildCharset(const std::string& font_path)
                   return a.brightness == b.brightness ? a.ch < b.ch : a.brightness < b.brightness;
               });
     return charset;
-}
-
-AsciiCharset CharsetBuilder::loadCharset(const std::string& charset_path)
-{
-    throw std::runtime_error("loadCharset is not implemented: " + charset_path);
 }
 
 } // namespace asciixel

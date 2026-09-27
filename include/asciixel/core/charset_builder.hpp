@@ -1,17 +1,14 @@
 #ifndef CHARSET_BUILDER_HPP
 #define CHARSET_BUILDER_HPP
 
+#include "asciixel/config/charset_config.hpp"
 #include "asciixel/model/ascii_charset.hpp"
-#include <string>
 
 namespace asciixel {
 
 class CharsetBuilder {
 public:
-    static AsciiCharset buildCharset(const std::string& font_path);
-    static AsciiCharset loadCharset(const std::string& charset_path);
-
-private:
+    static AsciiCharset buildCharset(const CharsetConfig& config);
 };
 
 } // namespace asciixel
