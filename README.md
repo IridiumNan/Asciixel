@@ -2,6 +2,8 @@
 
 使用 C++ 将图片、视频转换为 ASCII 字符画或字符动画的小工具。
 
+FreeType 2.14.3 通过 Git submodule 管理。克隆时使用 `git clone --recurse-submodules <仓库地址>`；已有工作目录先运行 `git submodule update --init --recursive`，再用 CMake 配置和构建。
+
 **当前状态：设计阶段，尚无可运行程序。** 本文描述首版目标，不代表功能已经实现。
 
 ## 首版目标
