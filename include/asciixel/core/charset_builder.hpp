@@ -2,13 +2,13 @@
 #define CHARSET_BUILDER_HPP
 
 #include "asciixel/config/charset_config.hpp"
-#include "asciixel/model/ascii_charset.hpp"
+#include "asciixel/model/rasterized_charset.hpp"
 
 namespace asciixel {
 
 class CharsetBuilder {
 public:
-    static AsciiCharset buildCharset(const CharsetConfig& config);
+    static RasterizedCharset buildCharset(const CharsetConfig& config);
 };
 
 } // namespace asciixel

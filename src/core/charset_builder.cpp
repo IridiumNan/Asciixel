@@ -1,7 +1,11 @@
 #include "asciixel/core/charset_builder.hpp"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -10,107 +14,108 @@ namespace asciixel {
 namespace {
 
 using LibraryHandle = std::unique_ptr<FT_LibraryRec_, decltype(&FT_Done_FreeType)>;
-using FaceHandle    = std::unique_ptr<FT_FaceRec_, decltype(&FT_Done_Face)>;
+using FaceHandle = std::unique_ptr<FT_FaceRec_, decltype(&FT_Done_Face)>;
 
 struct Font {
     LibraryHandle library;
-    FaceHandle    face;
+    FaceHandle face;
 };
 
 Font loadFont(const std::string& font_path, unsigned pixel_size)
 {
     FT_Library raw_library = nullptr;
-    if (FT_Init_FreeType(&raw_library)) {
+    if (FT_Init_FreeType(&raw_library))
         throw std::runtime_error("FreeType initialization failed");
-    }
     LibraryHandle library(raw_library, FT_Done_FreeType);
-
     FT_Face raw_face = nullptr;
-    if (FT_New_Face(library.get(), font_path.c_str(), 0, &raw_face)) {
+    if (FT_New_Face(library.get(), font_path.c_str(), 0, &raw_face))
         throw std::runtime_error("Cannot load font: " + font_path);
-    }
     FaceHandle face(raw_face, FT_Done_Face);
-    if (FT_Set_Pixel_Sizes(face.get(), 0, pixel_size)) {
+    if (FT_Set_Pixel_Sizes(face.get(), 0, pixel_size))
         throw std::runtime_error("Cannot set font size");
-    }
     return {std::move(library), std::move(face)};
 }
 
-struct BitmapView {
-    const unsigned char* pixels;
-    unsigned int         width;
-    unsigned int         rows;
-    int                  pitch;
-};
-
-// The pixels belong to face and remain valid until the next FT_Load_Char call.
-BitmapView getBitmap(FT_Face face, int ch)
+RasterizedGlyph copyGlyph(FT_Face face, unsigned char ch)
 {
-    if (!FT_Get_Char_Index(face, ch) || FT_Load_Char(face, ch, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL)) {
+    if (!FT_Get_Char_Index(face, ch) ||
+        FT_Load_Char(face, ch, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL)) {
         throw std::runtime_error("Cannot render ASCII character: " + std::to_string(ch));
     }
     const FT_Bitmap& bitmap = face->glyph->bitmap;
-    if (bitmap.width && bitmap.rows && bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) {
+    RasterizedGlyph glyph;
+    glyph.character = static_cast<char>(ch);
+    glyph.bitmap_width = bitmap.width;
+    glyph.bitmap_height = bitmap.rows;
+    glyph.bitmap_left = face->glyph->bitmap_left;
+    glyph.bitmap_top = face->glyph->bitmap_top;
+    if (bitmap.width == 0 || bitmap.rows == 0) return glyph;
+    if (bitmap.pixel_mode != FT_PIXEL_MODE_GRAY || bitmap.num_grays < 2)
         throw std::runtime_error("Expected grayscale glyph bitmap");
-    }
-    return {bitmap.buffer, bitmap.width, bitmap.rows, bitmap.pitch};
-}
-
-float calculateBrightness(const BitmapView& bitmap, long cell_width, long cell_height)
-{
-    double sum = 0;
-    for (unsigned int y = 0; y < bitmap.rows; ++y) {
-        const unsigned char* row = bitmap.pitch >= 0 ? bitmap.pixels + y * bitmap.pitch : bitmap.pixels + (bitmap.rows - 1 - y) * (-bitmap.pitch);
-        for (unsigned int x = 0; x < bitmap.width; ++x) {
-            sum += row[x];
+    if (glyph.bitmap_width > std::numeric_limits<std::size_t>::max() / glyph.bitmap_height)
+        throw std::runtime_error("Glyph bitmap dimensions overflow");
+    glyph.alpha.resize(glyph.bitmap_width * glyph.bitmap_height);
+    for (std::size_t y = 0; y < glyph.bitmap_height; ++y) {
+        const auto* row = bitmap.buffer + static_cast<std::ptrdiff_t>(y) * bitmap.pitch;
+        for (std::size_t x = 0; x < glyph.bitmap_width; ++x) {
+            glyph.alpha[y * glyph.bitmap_width + x] =
+                static_cast<std::uint8_t>((row[x] * 255u + (bitmap.num_grays - 1) / 2) /
+                                          (bitmap.num_grays - 1));
         }
     }
-    return static_cast<float>(sum / (255.0 * cell_width * cell_height));
-}
-
-void normalizeBrightness(AsciiCharset& charset)
-{
-    if (charset.glyphs.empty()) {
-        return;
-    }
-    float minimum = charset.glyphs.front().brightness;
-    float maximum = minimum;
-    for (const Glyph& glyph : charset.glyphs) {
-        minimum = std::min(minimum, glyph.brightness);
-        maximum = std::max(maximum, glyph.brightness);
-    }
-    const float range = maximum - minimum;
-    for (Glyph& glyph : charset.glyphs) {
-        glyph.brightness = range > 0 ? (glyph.brightness - minimum) / range : 0;
-    }
+    return glyph;
 }
 
 } // namespace
 
-AsciiCharset CharsetBuilder::buildCharset(const CharsetConfig& config)
+RasterizedCharset CharsetBuilder::buildCharset(const CharsetConfig& config)
 {
     config.validate();
-    Font         font = loadFont(config.font_path, config.pixel_size);
-    FT_Face      face = font.face.get();
-    AsciiCharset charset;
-    // Every glyph uses the same cell area, including the space.
-    if (FT_Load_Char(face, ' ', FT_LOAD_DEFAULT)) {
-        throw std::runtime_error("Cannot measure character cell");
+    Font font = loadFont(config.font_path, config.pixel_size);
+    FT_Face face = font.face.get();
+    RasterizedCharset charset;
+
+    std::int64_t left = 0;
+    std::int64_t right = 0;
+    std::int64_t top = std::max<std::int64_t>(0, std::ceil(face->size->metrics.ascender / 64.0));
+    std::int64_t bottom = std::min<std::int64_t>(0, std::floor(face->size->metrics.descender / 64.0));
+    const auto line_height = static_cast<std::int64_t>(std::ceil(face->size->metrics.height / 64.0));
+    FT_Pos advance = 0;
+
+    for (unsigned char ch : config.candidates) {
+        auto glyph = copyGlyph(face, ch);
+        const FT_Pos glyph_advance = face->glyph->advance.x;
+        if (charset.glyphs.empty()) advance = glyph_advance;
+        if (advance <= 0 || glyph_advance != advance)
+            throw std::runtime_error("Candidate characters must have the same positive advance");
+        right = std::max(right, static_cast<std::int64_t>(std::ceil(advance / 64.0)));
+        if (!glyph.alpha.empty()) {
+            left = std::min(left, static_cast<std::int64_t>(glyph.bitmap_left));
+            right = std::max(right, static_cast<std::int64_t>(glyph.bitmap_left) +
+                                    static_cast<std::int64_t>(glyph.bitmap_width));
+            top = std::max(top, static_cast<std::int64_t>(glyph.bitmap_top));
+            bottom = std::min(bottom, static_cast<std::int64_t>(glyph.bitmap_top) -
+                                      static_cast<std::int64_t>(glyph.bitmap_height));
+        }
+        charset.glyphs.push_back(std::move(glyph));
     }
-    const long width  = face->glyph->advance.x / 64;
-    const long height = face->size->metrics.height / 64;
-    if (width <= 0 || height <= 0) {
+    const auto width = right - left;
+    const auto height = std::max(line_height, top - bottom);
+    if (width <= 0 || height <= 0 ||
+        width > std::numeric_limits<int>::max() || height > std::numeric_limits<int>::max()) {
         throw std::runtime_error("Invalid font cell size");
     }
-    for (unsigned char ch : config.candidates) {
-        const BitmapView bitmap = getBitmap(face, ch);
-        charset.glyphs.push_back({static_cast<char>(ch),
-                                  calculateBrightness(bitmap, width, height)});
+    charset.layout = {static_cast<std::size_t>(width), static_cast<std::size_t>(height),
+                      static_cast<int>(-left), static_cast<int>(top)};
+    const double area = static_cast<double>(width) * height;
+    for (auto& glyph : charset.glyphs) {
+        double sum = 0;
+        for (auto alpha : glyph.alpha) sum += alpha;
+        glyph.density = static_cast<float>(sum / (255.0 * area));
     }
-    normalizeBrightness(charset);
     std::sort(charset.glyphs.begin(), charset.glyphs.end(),
-              [](const Glyph& a, const Glyph& b) {
-                  return a.brightness == b.brightness ? a.ch < b.ch : a.brightness < b.brightness;
+              [](const RasterizedGlyph& a, const RasterizedGlyph& b) {
+                  return a.density == b.density ? a.character < b.character : a.density < b.density;
               });
     return charset;
 }

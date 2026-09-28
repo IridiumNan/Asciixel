@@ -1,7 +1,8 @@
 #ifndef GRID_LAYOUT_HPP
 #define GRID_LAYOUT_HPP
 
-#include <cstddef>
+#include "asciixel/config/sampling_config.hpp"
+#include "asciixel/model/rasterized_charset.hpp"
 
 namespace asciixel {
 
@@ -10,10 +11,9 @@ struct GridSize {
     std::size_t rows;
 };
 
-// Cap the column count at 200. Scale rows by the same factor, then halve them
-// to account for character cells that are about twice as tall as they are wide.
-GridSize calculateGrid(std::size_t image_width, std::size_t image_height);
+// Small images retain their source column count. Rows use the actual cell aspect.
+GridSize calculateGrid(std::size_t image_width, std::size_t image_height,
+                       const SamplingConfig& config, const GlyphLayout& layout);
 
 } // namespace asciixel
-
-#endif // GRID_LAYOUT_HPP
+#endif

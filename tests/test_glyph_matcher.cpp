@@ -1,8 +1,22 @@
 #include "asciixel/core/glyph_matcher.hpp"
 
 #include <stdexcept>
+#include <initializer_list>
+#include <utility>
 
 namespace {
+
+asciixel::RasterizedCharset makeCharset(std::initializer_list<std::pair<char, float>> entries)
+{
+    asciixel::RasterizedCharset result;
+    for (const auto& entry : entries) {
+        asciixel::RasterizedGlyph glyph;
+        glyph.character = entry.first;
+        glyph.density = entry.second;
+        result.glyphs.push_back(glyph);
+    }
+    return result;
+}
 
 void require(bool condition)
 {
@@ -13,7 +27,7 @@ void require(bool condition)
 
 void matchLinearRgbBrightnessAcrossFrame()
 {
-    const asciixel::AsciiCharset charset{{{' ', 0.0f}, {'+', 0.6f}, {'#', 1.0f}}};
+    const auto charset = makeCharset({{' ', 0.0f}, {'+', 0.15f}, {'#', 0.25f}});
     asciixel::SampledFrame frame(2, 2);
     frame.at(0, 0).color = {1.0f, 0.0f, 0.0f};
     frame.at(1, 0).color = {0.0f, 1.0f, 0.0f};
@@ -30,16 +44,16 @@ void matchLinearRgbBrightnessAcrossFrame()
 
 void breakEqualDistanceTiesByCharacter()
 {
-    const asciixel::AsciiCharset charset{{{'Z', 0.0f}, {'A', 0.5f}}};
+    const auto charset = makeCharset({{'Z', 0.0f}, {'A', 0.5f}});
     asciixel::SampledFrame frame(1, 1);
-    frame.at(0, 0).color = {0.25f, 0.25f, 0.25f};
+    frame.at(0, 0).color = {0.5f, 0.5f, 0.5f};
 
     require(asciixel::GlyphMatcher::match(frame, charset).at(0, 0).character == 'A');
 }
 
 void rejectEmptyCharset()
 {
-    const asciixel::AsciiCharset charset;
+    const asciixel::RasterizedCharset charset;
     asciixel::SampledFrame frame(1, 1);
     frame.at(0, 0).color = {0.0f, 0.0f, 0.0f};
 
@@ -52,6 +66,26 @@ void rejectEmptyCharset()
     require(rejected);
 }
 
+void stretchNonzeroDensityRangeWithoutChangingCharset()
+{
+    const auto charset = makeCharset({{'A', 0.125f}, {'B', 0.375f}});
+    asciixel::SampledFrame frame(2, 1);
+    frame.at(0, 0).color = {0, 0, 0};
+    frame.at(1, 0).color = {1, 1, 1};
+    const auto result = asciixel::GlyphMatcher::match(frame, charset);
+    require(result.pixels[0].character == 'A');
+    require(result.pixels[1].character == 'B');
+    require(charset.glyphs[0].density == 0.125f && charset.glyphs[1].density == 0.375f);
+}
+
+void handleUniformDensity()
+{
+    const auto charset = makeCharset({{'Z', 0.25f}, {'A', 0.25f}});
+    asciixel::SampledFrame frame(1, 1);
+    frame.at(0, 0).color = {1, 1, 1};
+    require(asciixel::GlyphMatcher::match(frame, charset).pixels[0].character == 'A');
+}
+
 } // namespace
 
 int main()
@@ -59,4 +93,6 @@ int main()
     matchLinearRgbBrightnessAcrossFrame();
     breakEqualDistanceTiesByCharacter();
     rejectEmptyCharset();
+    stretchNonzeroDensityRangeWithoutChangingCharset();
+    handleUniformDensity();
 }

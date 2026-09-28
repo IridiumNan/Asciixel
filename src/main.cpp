@@ -77,11 +77,13 @@ std::string toUtf8(const wchar_t* value)
 void convertImage(const std::string& path)
 {
     const asciixel::ImageFrame image = asciixel::loadImage(path);
-    const asciixel::GridSize grid = asciixel::calculateGrid(image.width, image.height);
+    const asciixel::RasterizedCharset charset =
+        asciixel::CharsetBuilder::buildCharset(defaultCharsetConfig());
+    const asciixel::SamplingConfig sampling_config;
+    const asciixel::GridSize grid =
+        asciixel::calculateGrid(image.width, image.height, sampling_config, charset.layout);
     const asciixel::SampledFrame sampled =
         asciixel::ImageSampler::sample(image, grid.columns, grid.rows);
-    const asciixel::AsciiCharset charset =
-        asciixel::CharsetBuilder::buildCharset(defaultCharsetConfig());
     writeAsciiFrame(asciixel::GlyphMatcher::match(sampled, charset));
 }
 

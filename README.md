@@ -10,7 +10,9 @@ FreeType 2.14.3 通过 Git submodule 管理。克隆时使用 `git clone --recur
 
 构建完成后运行 `build/asciixel.exe <图片路径>`，字符画写入 stdout。入口固定使用 Windows 的 `C:/Windows/Fonts/consola.ttf`、24 像素字号和可打印 ASCII 字符；字体不存在时会报错。当前只处理图片，不支持下文规划的命令行选项和视频播放。
 
-输出列数为 `min(原图宽度, 200)`；行数先按相同缩放比例计算，再除以 2 并四舍五入，至少保留一行。例如 400×200 图片输出 200 列、50 行。小图不会放大，行数没有 200 的上限。
+输出列数为 `min(原图宽度, SamplingConfig.columns)`，默认配置为 200 列，目前尚未接入命令行参数。行数为 `max(1, round(列数 × 原图高度 / 原图宽度 × 字符格宽度 / 字符格高度))`，字符格尺寸由实际字体和字号确定。小图不增加列数，行数没有 200 的上限。
+
+`CharsetBuilder` 根据 `CharsetConfig` 构建 `RasterizedCharset`，保存统一格子布局、基线原点，以及每个字符的原始灰度位图、偏移和覆盖率。匹配阶段将覆盖率归一化后选字。当前处理链路为 `ImageFrame → SampledFrame → AsciiFrame → stdout`；字符集位图为后续图片绘制提供数据，目前尚无 PNG 导出入口。
 
 ## 首版目标
 
