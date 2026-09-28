@@ -9,12 +9,13 @@ namespace asciixel {
 class ImageSampler {
 private:
     static ImagePixel sampleBlock(const ImageFrame& frame,
-                                  std::size_t       x_start,
-                                  std::size_t       y_start,
-                                  std::size_t       x_end,
-                                  std::size_t       y_end);
+                                  double            x_start,
+                                  double            y_start,
+                                  double            x_end,
+                                  double            y_end);
 
 public:
+    // The caller provides final grid dimensions, including character aspect correction.
     static ImageFrame sample(const ImageFrame& frame,
                              std::size_t       new_width,
                              std::size_t       new_height);
