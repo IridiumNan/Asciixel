@@ -11,7 +11,7 @@ set(FFMPEG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/build/ffmpeg-install" CACHE PATH
     "Installation directory of the FFmpeg submodule build")
 if(NOT EXISTS "${FFMPEG_ROOT}/include/libavformat/avformat.h" OR
    NOT EXISTS "${FFMPEG_ROOT}/include/libavutil/samplefmt.h")
-    message(FATAL_ERROR "FFmpeg installation is incomplete. Run scripts/build-ffmpeg.ps1 first, or set FFMPEG_ROOT.")
+    message(FATAL_ERROR "FFmpeg installation is incomplete. Run scripts/build-ffmpeg.ps1 (Windows) or scripts/build-ffmpeg.sh (Linux) first, or set FFMPEG_ROOT.")
 endif()
 
 foreach(component avformat avcodec avutil swscale)

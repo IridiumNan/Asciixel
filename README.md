@@ -6,20 +6,124 @@ FreeType 2.14.3 通过 Git submodule 管理。克隆时使用 `git clone --recur
 
 **当前状态：已有最小图片入口；下文仍描述后续首版目标。**
 
+## 快速开始（Linux）
+
+依赖：CMake ≥ 3.16、g++（C++17）、GNU make、zlib 开发头文件（Debian/Ubuntu 为 `zlib1g-dev`）。缺少 `nasm`/`yasm` 不影响，FFmpeg 配置已关闭汇编优化。
+
+### 1. 克隆仓库与子模块
+
+```bash
+git clone --recurse-submodules <仓库地址>
+cd Asciixel
+```
+
+已有工作目录则补齐子模块：
+
+```bash
+git submodule update --init --recursive
+```
+
+> 子模块必须以 LF 行尾检出。若曾在 Windows 上检出再拿到 Linux 构建，三方目录里的 `configure` 会是 CRLF，运行时直接报 `cannot execute: required file not found` 或 `bad variable name`；此时需先在 Linux/WSL 下以 LF 重新检出子模块。
+
+### 2. 构建 FFmpeg
+
+使用脚本，参数为并发数（默认 `nproc`）：
+
+```bash
+./scripts/build-ffmpeg.sh        # 或 ./scripts/build-ffmpeg.sh 8
+```
+
+等价的手动步骤（从仓库根目录执行）：
+
+```bash
+FFMPEG_INSTALL="$PWD/build/ffmpeg-install-linux"
+mkdir -p build/ffmpeg-linux && cd build/ffmpeg-linux
+../../third_party/ffmpeg/configure \
+    --prefix="$FFMPEG_INSTALL" \
+    --disable-autodetect --disable-everything \
+    --enable-shared --disable-static \
+    --disable-programs --disable-doc --disable-network \
+    --disable-x86asm \
+    --enable-avformat --enable-avcodec --enable-swscale \
+    --enable-decoder=png,mjpeg --enable-encoder=png \
+    --enable-demuxer=image2,png_pipe,jpeg_pipe \
+    --enable-protocol=file --enable-parser=png,mjpeg \
+    --enable-zlib
+make -j"$(nproc)"
+make install
+cd ../..
+```
+
+产物安装到 `build/ffmpeg-install-linux`（头文件在 `include/`，共享库在 `lib/`），与 Windows 脚本的 `build/ffmpeg-install` 相互独立。改动配置参数后需重新执行本节。
+
+### 3. 配置并构建项目
+
+FFmpeg 默认查找路径是 Windows 脚本使用的 `build/ffmpeg-install`，Linux 需显式指向独立目录：
+
+```bash
+cmake -S . -B build-linux -DFFMPEG_ROOT="$PWD/build/ffmpeg-install-linux"
+cmake --build build-linux -j"$(nproc)"
+```
+
+### 4. 运行
+
+```bash
+./build-linux/asciixel photo.jpg                               # 终端字符画写入 stdout
+./build-linux/asciixel photo.jpg --format png --output art.png # 黑底白字灰度 PNG
+```
+
+Linux 默认字体为 `/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`，缺失时报错，可安装 `fonts-dejavu-core`。程序依赖 `build/ffmpeg-install-linux/lib` 下的共享库，正常从构建目录运行即可；若提示找不到 `libavformat.so`，用 `LD_LIBRARY_PATH="$PWD/build/ffmpeg-install-linux/lib" ./build-linux/asciixel ...` 指定。
+
+运行测试：`ctest --test-dir build-linux`（字体相关用例仅在 Windows 上注册）。
+
+## 快速开始（Windows）
+
+依赖：CMake ≥ 3.16、MinGW-w64 工具链（`gcc`、`make` 在 PATH 中）、Git for Windows（脚本用其中的 Bash 执行 FFmpeg 的 `configure`）。
+
+### 1. 克隆仓库与子模块
+
+```powershell
+git clone --recurse-submodules <仓库地址>
+cd Asciixel
+```
+
+已有工作目录则补齐子模块：
+
+```powershell
+git submodule update --init --recursive
+```
+
+### 2. 构建 FFmpeg
+
+```powershell
+./scripts/build-ffmpeg.ps1        # 可选并发数：./scripts/build-ffmpeg.ps1 8
+```
+
+产物安装到 `build/ffmpeg-install`（头文件在 `include/`、`.lib` 在 `lib/`、`.dll` 在 `bin/`），正是 CMake 的默认查找路径，无需额外参数。MinGW 的 `make` 需要 Windows 风格盘符路径，脚本会自动修补生成的 Makefile；改动配置参数后需重新执行本节。
+
+### 3. 配置并构建项目
+
+```powershell
+cmake -S . -B build
+cmake --build build -j 4
+```
+
+CMake 会把 `build/ffmpeg-install/bin` 下的 DLL 复制到可执行文件旁，无需手动设置 PATH。
+
+### 4. 运行
+
+```powershell
+./build/asciixel.exe photo.jpg                               # 终端字符画写入 stdout
+./build/asciixel.exe photo.jpg --format png --output art.png # 黑底白字灰度 PNG
+```
+
+Windows 默认字体为 `C:/Windows/Fonts/consola.ttf`，缺失时报错。运行测试：`ctest --test-dir build`。
+
 ## 当前可运行入口
 
 构建完成后运行 `build/asciixel.exe <图片路径>`，字符画写入 stdout。入口固定使用 Windows 的 `C:/Windows/Fonts/consola.ttf`（Linux 为 `/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`）、24 像素字号和可打印 ASCII 字符；字体不存在时会报错。当前只处理图片，支持 `--format terminal|png`，其余下文规划的选项和视频播放尚未实现。
 
-黑底白字 PNG 导出：
-
-```powershell
-./scripts/build-ffmpeg.ps1
-cmake -S . -B build
-cmake --build build -j 4
-./build/asciixel.exe photo.jpg --format png --output art.png
-```
-
-已有 FFmpeg 构建也需重新执行脚本，以启用 PNG 编码器。PNG 输出为不透明的 8 位灰度图，保留字体抗锯齿；尺寸为字符列数 × 格子宽度、字符行数 × 格子高度。单张输出像素缓冲区限制为 256 MiB。`--output` 仅用于 PNG，必须指定文件路径（不支持 `-`），拒绝覆盖已有文件，支持中文路径。默认或 `--format terminal` 仍输出文本到 stdout。
+黑底白字 PNG 导出：`./build/asciixel.exe photo.jpg --format png --output art.png`，构建步骤见上文 Windows 快速开始。已有 FFmpeg 构建也需重新执行脚本，以启用 PNG 编码器。PNG 输出为不透明的 8 位灰度图，保留字体抗锯齿；尺寸为字符列数 × 格子宽度、字符行数 × 格子高度。单张输出像素缓冲区限制为 256 MiB。`--output` 仅用于 PNG，必须指定文件路径（不支持 `-`），拒绝覆盖已有文件，支持中文路径。默认或 `--format terminal` 仍输出文本到 stdout。
 
 输出列数为 `min(原图宽度, SamplingConfig.columns)`，默认配置为 200 列，目前尚未接入命令行参数。行数为 `max(1, round(列数 × 原图高度 / 原图宽度 × 字符格宽度 / 字符格高度))`，字符格尺寸由实际字体和字号确定。小图不增加列数，行数没有 200 的上限。
 
