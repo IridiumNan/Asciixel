@@ -4,7 +4,13 @@
 
 FreeType 2.14.3 通过 Git submodule 管理。克隆时使用 `git clone --recurse-submodules <仓库地址>`；已有工作目录先运行 `git submodule update --init --recursive`，再用 CMake 配置和构建。
 
-**当前状态：设计阶段，尚无可运行程序。** 本文描述首版目标，不代表功能已经实现。
+**当前状态：已有最小图片入口；下文仍描述后续首版目标。**
+
+## 当前可运行入口
+
+构建完成后运行 `build/asciixel.exe <图片路径>`，字符画写入 stdout。入口固定使用 Windows 的 `C:/Windows/Fonts/consola.ttf`、24 像素字号和可打印 ASCII 字符；字体不存在时会报错。当前只处理图片，不支持下文规划的命令行选项和视频播放。
+
+输出列数为 `min(原图宽度, 200)`；行数先按相同缩放比例计算，再除以 2 并四舍五入，至少保留一行。例如 400×200 图片输出 200 列、50 行。小图不会放大，行数没有 200 的上限。
 
 ## 首版目标
 
@@ -21,7 +27,7 @@ FreeType 2.14.3 通过 Git submodule 管理。克隆时使用 `git clone --recur
 
 ## 首版命令行约定
 
-以下命令是待实现的接口示例，目前还不能运行。`fonts/mono.ttf` 是用户提供字体的示例路径。
+以下命令是待实现的完整接口示例，目前还不能运行。`fonts/mono.ttf` 是用户提供字体的示例路径。
 
 ```text
 asciixel photo.png --font fonts/mono.ttf
@@ -71,7 +77,7 @@ TXT 固定为 UTF-8 无 BOM，每行 LF（包括最后一行），保留行尾�
 
 ## 项目目录结构
 
-以下为规划结构；目前只有 README 和设计文档，代码目录及构建文件尚未创建。
+以下为规划中的完整结构；当前已有部分核心模块及上述最小入口，实际文件以仓库为准。
 
 ```text
 Asciixel/

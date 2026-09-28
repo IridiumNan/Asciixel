@@ -2,12 +2,16 @@
 
 extern "C" {
 #include <libavutil/frame.h>
+#include <libavutil/log.h>
 #include <libavutil/pixfmt.h>
 }
 
 #include <cmath>
+#include <cstdarg>
 #include <cstdint>
+#include <cstdio>
 #include <stdexcept>
+#include <string>
 
 namespace {
 
@@ -79,11 +83,54 @@ void rejectsUnsupportedPixelFormat()
     require(threw, "unsupported pixel format should raise runtime_error");
 }
 
+bool sawDeprecatedPixelFormatWarning = false;
+
+void collectWarnings(void*, int level, const char* format, va_list args)
+{
+    if (level > AV_LOG_WARNING) {
+        return;
+    }
+    char message[256];
+    std::vsnprintf(message, sizeof(message), format, args);
+    if (std::string(message).find("deprecated pixel format used") != std::string::npos) {
+        sawDeprecatedPixelFormatWarning = true;
+    }
+}
+
+void convertsFullRangeJpegWithoutDeprecatedFormatWarning()
+{
+    std::uint8_t y[] = {16};
+    std::uint8_t u[] = {128};
+    std::uint8_t v[] = {128};
+    AVFrame source{};
+    source.width = 1;
+    source.height = 1;
+    source.format = AV_PIX_FMT_YUVJ444P;
+    source.color_range = AVCOL_RANGE_JPEG;
+    source.data[0] = y;
+    source.data[1] = u;
+    source.data[2] = v;
+    source.linesize[0] = source.linesize[1] = source.linesize[2] = 1;
+
+    av_log_set_callback(collectWarnings);
+    const auto result = asciixel::convertFrame(source, {0.0f, 0.0f, 0.0f});
+    av_log_set_callback(av_log_default_callback);
+
+    requireNear(result.at(0, 0).color.r, 0.00518f, "full-range JPEG luma was converted as limited-range");
+    require(!sawDeprecatedPixelFormatWarning, "deprecated JPEG pixel format warning was emitted");
+}
+
 } // namespace
 
 int main()
 {
-    preservesDimensionsAndConvertsSrgbToLinear();
-    compositesTransparentPixelsOverLinearBackground();
-    rejectsUnsupportedPixelFormat();
+    try {
+        preservesDimensionsAndConvertsSrgbToLinear();
+        compositesTransparentPixelsOverLinearBackground();
+        rejectsUnsupportedPixelFormat();
+        convertsFullRangeJpegWithoutDeprecatedFormatWarning();
+    } catch (const std::exception& error) {
+        std::fprintf(stderr, "%s\n", error.what());
+        return 1;
+    }
 }

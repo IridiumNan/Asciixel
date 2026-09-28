@@ -22,6 +22,8 @@ endforeach()
 add_library(asciixel_core STATIC
 	src/core/image_sampler.cpp
 	src/core/charset_builder.cpp
+	src/core/glyph_matcher.cpp
+	src/core/grid_layout.cpp
 	src/config/charset_config.cpp
 	src/io/image_loader.cpp
 	src/io/frame_converter.cpp
@@ -39,6 +41,19 @@ target_include_directories(asciixel_core
 	PUBLIC
 		${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+add_executable(asciixel src/main.cpp)
+target_link_libraries(asciixel PRIVATE asciixel_core)
+if(MINGW)
+	target_link_options(asciixel PRIVATE -municode)
+endif()
+file(GLOB FFMPEG_RUNTIME_DLLS "${FFMPEG_ROOT}/bin/*.dll")
+if(WIN32 AND FFMPEG_RUNTIME_DLLS)
+	add_custom_command(TARGET asciixel POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFMPEG_RUNTIME_DLLS}
+			$<TARGET_FILE_DIR:asciixel>
+		COMMAND_EXPAND_LISTS)
+endif()
 
 include(CTest)
 
@@ -81,6 +96,21 @@ if(BUILD_TESTING)
 	target_link_libraries(test_charset_builder PRIVATE asciixel_core)
 	if(WIN32 AND EXISTS "C:/Windows/Fonts/consola.ttf")
 		add_test(NAME charset_builder COMMAND test_charset_builder "C:/Windows/Fonts/consola.ttf")
+	endif()
+
+	add_executable(test_glyph_matcher tests/test_glyph_matcher.cpp)
+	target_link_libraries(test_glyph_matcher PRIVATE asciixel_core)
+	add_test(NAME glyph_matcher COMMAND test_glyph_matcher)
+
+	add_executable(test_grid_layout tests/test_grid_layout.cpp)
+	target_link_libraries(test_grid_layout PRIVATE asciixel_core)
+	add_test(NAME grid_layout COMMAND test_grid_layout)
+
+	if(WIN32 AND EXISTS "C:/Windows/Fonts/consola.ttf")
+		add_test(NAME image_cli COMMAND ${CMAKE_COMMAND}
+			-DPROGRAM=$<TARGET_FILE:asciixel>
+			-DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/red_green.png
+			-P ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_image_cli.cmake)
 	endif()
 endif()
 
