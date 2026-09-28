@@ -8,11 +8,22 @@ FreeType 2.14.3 通过 Git submodule 管理。克隆时使用 `git clone --recur
 
 ## 当前可运行入口
 
-构建完成后运行 `build/asciixel.exe <图片路径>`，字符画写入 stdout。入口固定使用 Windows 的 `C:/Windows/Fonts/consola.ttf`、24 像素字号和可打印 ASCII 字符；字体不存在时会报错。当前只处理图片，不支持下文规划的命令行选项和视频播放。
+构建完成后运行 `build/asciixel.exe <图片路径>`，字符画写入 stdout。入口固定使用 Windows 的 `C:/Windows/Fonts/consola.ttf`（Linux 为 `/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`）、24 像素字号和可打印 ASCII 字符；字体不存在时会报错。当前只处理图片，支持 `--format terminal|png`，其余下文规划的选项和视频播放尚未实现。
+
+黑底白字 PNG 导出：
+
+```powershell
+./scripts/build-ffmpeg.ps1
+cmake -S . -B build
+cmake --build build -j 4
+./build/asciixel.exe photo.jpg --format png --output art.png
+```
+
+已有 FFmpeg 构建也需重新执行脚本，以启用 PNG 编码器。PNG 输出为不透明的 8 位灰度图，保留字体抗锯齿；尺寸为字符列数 × 格子宽度、字符行数 × 格子高度。单张输出像素缓冲区限制为 256 MiB。`--output` 仅用于 PNG，必须指定文件路径（不支持 `-`），拒绝覆盖已有文件，支持中文路径。默认或 `--format terminal` 仍输出文本到 stdout。
 
 输出列数为 `min(原图宽度, SamplingConfig.columns)`，默认配置为 200 列，目前尚未接入命令行参数。行数为 `max(1, round(列数 × 原图高度 / 原图宽度 × 字符格宽度 / 字符格高度))`，字符格尺寸由实际字体和字号确定。小图不增加列数，行数没有 200 的上限。
 
-`CharsetBuilder` 根据 `CharsetConfig` 构建 `RasterizedCharset`，保存统一格子布局、基线原点，以及每个字符的原始灰度位图、偏移和覆盖率。匹配阶段将覆盖率归一化后选字。当前处理链路为 `ImageFrame → SampledFrame → AsciiFrame → stdout`；字符集位图为后续图片绘制提供数据，目前尚无 PNG 导出入口。
+`CharsetBuilder` 根据 `CharsetConfig` 构建 `RasterizedCharset`，保存统一格子布局、基线原点，以及每个字符的原始灰度位图、偏移和覆盖率。匹配阶段将覆盖率归一化后选字。当前处理链路为 `ImageFrame → SampledFrame → AsciiFrame`，随后输出文本，或由 `core/ascii_renderer` 生成 `GrayBitmap`，交给 `io/png_writer` 编码保存。渲染接口不暴露 FFmpeg 类型。
 
 ## 首版目标
 
@@ -75,7 +86,7 @@ TXT 固定为 UTF-8 无 BOM，每行 LF（包括最后一行），保留行尾�
 
 ## 首版之外
 
-彩色输出、空间形状匹配、PNG/MP4 导出、音频同步、GUI、GPU、HDR 色调映射、非等宽字体、网络媒体和磁盘字体缓存均留待后续。
+彩色输出、空间形状匹配、MP4 导出、音频同步、GUI、GPU、HDR 色调映射、非等宽字体、网络媒体和磁盘字体缓存均留待后续。黑底白字 PNG 导出已作为增量功能实现。
 
 ## 项目目录结构
 

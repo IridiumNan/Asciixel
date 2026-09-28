@@ -24,9 +24,11 @@ add_library(asciixel_core STATIC
 	src/core/charset_builder.cpp
 	src/core/glyph_matcher.cpp
 	src/core/grid_layout.cpp
+	src/core/ascii_renderer.cpp
 	src/config/charset_config.cpp
 	src/io/image_loader.cpp
 	src/io/frame_converter.cpp
+	src/io/png_writer.cpp
 )
 
 target_link_libraries(asciixel_core PRIVATE freetype
@@ -49,6 +51,7 @@ if(MINGW)
 endif()
 file(GLOB FFMPEG_RUNTIME_DLLS "${FFMPEG_ROOT}/bin/*.dll")
 if(WIN32 AND FFMPEG_RUNTIME_DLLS)
+	set_property(TARGET asciixel APPEND PROPERTY LINK_DEPENDS ${FFMPEG_RUNTIME_DLLS})
 	add_custom_command(TARGET asciixel POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFMPEG_RUNTIME_DLLS}
 			$<TARGET_FILE_DIR:asciixel>
@@ -58,6 +61,22 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
+    add_executable(test_ascii_renderer tests/test_ascii_renderer.cpp)
+    target_link_libraries(test_ascii_renderer PRIVATE asciixel_core)
+    add_test(NAME ascii_renderer COMMAND test_ascii_renderer)
+
+    add_executable(test_png_writer tests/test_png_writer.cpp)
+    target_include_directories(test_png_writer PRIVATE "${FFMPEG_ROOT}/include")
+    target_link_libraries(test_png_writer PRIVATE asciixel_core
+        ${FFMPEG_avformat_LIBRARY} ${FFMPEG_avcodec_LIBRARY} ${FFMPEG_avutil_LIBRARY})
+    if(WIN32 AND FFMPEG_RUNTIME_DLLS)
+        set_property(TARGET test_png_writer APPEND PROPERTY LINK_DEPENDS ${FFMPEG_RUNTIME_DLLS})
+        add_custom_command(TARGET test_png_writer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FFMPEG_RUNTIME_DLLS}
+                $<TARGET_FILE_DIR:test_png_writer>
+            COMMAND_EXPAND_LISTS)
+    endif()
+    add_test(NAME png_writer COMMAND test_png_writer "${CMAKE_CURRENT_BINARY_DIR}/png-roundtrip.png")
 	add_executable(test_image_sampler
 		tests/test_image_sampler.cpp
 	)
@@ -107,6 +126,10 @@ if(BUILD_TESTING)
 	add_test(NAME grid_layout COMMAND test_grid_layout)
 
 	if(WIN32 AND EXISTS "C:/Windows/Fonts/consola.ttf")
+		add_test(NAME png_cli COMMAND ${CMAKE_COMMAND}
+			-DPROGRAM=$<TARGET_FILE:asciixel>
+			-DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/red_green.png
+			-P ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_png_cli.cmake)
 		add_test(NAME image_cli COMMAND ${CMAKE_COMMAND}
 			-DPROGRAM=$<TARGET_FILE:asciixel>
 			-DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/red_green.png

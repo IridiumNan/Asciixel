@@ -34,7 +34,7 @@ $configure = "'$sourcePath/configure' --prefix='$installPath' " +
     '--disable-autodetect --disable-everything --enable-shared --disable-static ' +
     '--disable-programs --disable-doc --disable-x86asm --disable-network ' +
     '--enable-avformat --enable-avcodec --enable-swscale ' +
-    '--enable-decoder=png,mjpeg --enable-demuxer=image2,png_pipe,jpeg_pipe ' +
+    '--enable-decoder=png,mjpeg --enable-encoder=png --enable-demuxer=image2,png_pipe,jpeg_pipe ' +
     '--enable-protocol=file --enable-parser=png,mjpeg --enable-zlib ' +
     "--extra-cflags=-I$mingwPath/include --extra-ldflags=-L$mingwPath/lib"
 
