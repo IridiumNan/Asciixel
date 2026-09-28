@@ -6,7 +6,7 @@
 #include <stdexcept>
 
 namespace asciixel {
-ImagePixel ImageSampler::sampleBlock(const ImageFrame& frame,
+SampledPixel ImageSampler::sampleBlock(const ImageFrame& frame,
                                      double            x_start,
                                      double            y_start,
                                      double            x_end,
@@ -39,14 +39,14 @@ ImagePixel ImageSampler::sampleBlock(const ImageFrame& frame,
         }
     }
 
-    return ImagePixel{{static_cast<float>(red / total_area),
-                       static_cast<float>(green / total_area),
-                       static_cast<float>(blue / total_area)}};
+    return SampledPixel{{static_cast<float>(red / total_area),
+                         static_cast<float>(green / total_area),
+                         static_cast<float>(blue / total_area)}};
 }
 
-ImageFrame ImageSampler::sample(const ImageFrame& frame,
-                                std::size_t       new_width,
-                                std::size_t       new_height)
+SampledFrame ImageSampler::sample(const ImageFrame& frame,
+                                  std::size_t       new_width,
+                                  std::size_t       new_height)
 {
     if (frame.width == 0 || frame.height == 0 || new_width == 0 || new_height == 0) {
         throw std::invalid_argument("sample dimensions must be greater than zero");
@@ -55,7 +55,7 @@ ImageFrame ImageSampler::sample(const ImageFrame& frame,
         throw std::invalid_argument("invalid sample dimensions or pixel count");
     }
 
-    ImageFrame   sampled_frame(new_width, new_height);
+    SampledFrame sampled_frame(new_width, new_height);
     const double x_step = static_cast<double>(frame.width) / static_cast<double>(new_width);
     const double y_step = static_cast<double>(frame.height) / static_cast<double>(new_height);
 

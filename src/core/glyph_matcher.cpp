@@ -29,7 +29,7 @@ char GlyphMatcher::matchCharacter(const Color& color, const AsciiCharset& charse
     return best->ch;
 }
 
-AsciiFrame GlyphMatcher::match(const ImageFrame& frame, const AsciiCharset& charset)
+AsciiFrame GlyphMatcher::match(const SampledFrame& frame, const AsciiCharset& charset)
 {
     if (frame.width == 0 || frame.height == 0 ||
         frame.width > std::numeric_limits<std::size_t>::max() / frame.height ||

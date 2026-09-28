@@ -14,7 +14,7 @@ void require(bool condition)
 void matchLinearRgbBrightnessAcrossFrame()
 {
     const asciixel::AsciiCharset charset{{{' ', 0.0f}, {'+', 0.6f}, {'#', 1.0f}}};
-    asciixel::ImageFrame frame(2, 2);
+    asciixel::SampledFrame frame(2, 2);
     frame.at(0, 0).color = {1.0f, 0.0f, 0.0f};
     frame.at(1, 0).color = {0.0f, 1.0f, 0.0f};
     frame.at(0, 1).color = {0.0f, 0.0f, 1.0f};
@@ -31,7 +31,7 @@ void matchLinearRgbBrightnessAcrossFrame()
 void breakEqualDistanceTiesByCharacter()
 {
     const asciixel::AsciiCharset charset{{{'Z', 0.0f}, {'A', 0.5f}}};
-    asciixel::ImageFrame frame(1, 1);
+    asciixel::SampledFrame frame(1, 1);
     frame.at(0, 0).color = {0.25f, 0.25f, 0.25f};
 
     require(asciixel::GlyphMatcher::match(frame, charset).at(0, 0).character == 'A');
@@ -40,7 +40,7 @@ void breakEqualDistanceTiesByCharacter()
 void rejectEmptyCharset()
 {
     const asciixel::AsciiCharset charset;
-    asciixel::ImageFrame frame(1, 1);
+    asciixel::SampledFrame frame(1, 1);
     frame.at(0, 0).color = {0.0f, 0.0f, 0.0f};
 
     bool rejected = false;

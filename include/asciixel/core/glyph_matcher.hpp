@@ -3,7 +3,7 @@
 
 #include "asciixel/model/ascii_charset.hpp"
 #include "asciixel/model/ascii_frame.hpp"
-#include "asciixel/model/image_frame.hpp"
+#include "asciixel/model/sampled_frame.hpp"
 
 namespace asciixel {
 
@@ -13,7 +13,7 @@ private:
 
 public:
     // The input frame contains sampled linear RGB colors.
-    static AsciiFrame match(const ImageFrame& frame, const AsciiCharset& charset);
+    static AsciiFrame match(const SampledFrame& frame, const AsciiCharset& charset);
 };
 
 } // namespace asciixel

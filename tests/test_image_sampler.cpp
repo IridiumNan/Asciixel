@@ -10,6 +10,7 @@ using asciixel::Color;
 using asciixel::ImageFrame;
 using asciixel::ImagePixel;
 using asciixel::ImageSampler;
+using asciixel::SampledFrame;
 
 bool nearlyEqual(float left, float right)
 {
@@ -42,7 +43,7 @@ void sampleConstantFrame()
     ImageFrame frame(4, 2);
     fillFrame(frame, {0.2f, 0.4f, 0.8f});
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 2, 1);
+    const SampledFrame sampled = ImageSampler::sample(frame, 2, 1);
 
     require(sampled.width == 2);
     require(sampled.height == 1);
@@ -58,7 +59,7 @@ void preservePixelsWhenDimensionsMatch()
     frame.at(0, 1) = ImagePixel{{0.0f, 0.0f, 1.0f}};
     frame.at(1, 1) = ImagePixel{{1.0f, 1.0f, 1.0f}};
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 2, 2);
+    const SampledFrame sampled = ImageSampler::sample(frame, 2, 2);
 
     assertColor(sampled.at(0, 0).color, 1.0f, 0.0f, 0.0f);
     assertColor(sampled.at(1, 0).color, 0.0f, 1.0f, 0.0f);
@@ -72,7 +73,7 @@ void weightFractionalBoundaryWhenUpsampling()
     frame.at(0, 0) = ImagePixel{{1.0f, 0.0f, 0.0f}};
     frame.at(1, 0) = ImagePixel{{0.0f, 0.0f, 1.0f}};
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 3, 1);
+    const SampledFrame sampled = ImageSampler::sample(frame, 3, 1);
 
     assertColor(sampled.at(0, 0).color, 1.0f, 0.0f, 0.0f);
     assertColor(sampled.at(1, 0).color, 0.5f, 0.0f, 0.5f);
@@ -86,7 +87,7 @@ void weightFractionalBoundaryWhenDownsampling()
     frame.at(1, 0) = ImagePixel{{1.0f, 0.0f, 0.0f}};
     frame.at(2, 0) = ImagePixel{{0.0f, 0.0f, 0.0f}};
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 2, 1);
+    const SampledFrame sampled = ImageSampler::sample(frame, 2, 1);
 
     assertColor(sampled.at(0, 0).color, 1.0f / 3.0f, 0.0f, 0.0f);
     assertColor(sampled.at(1, 0).color, 1.0f / 3.0f, 0.0f, 0.0f);
@@ -97,7 +98,7 @@ void repeatSinglePixelWhenUpsampling()
     ImageFrame frame(1, 1);
     frame.at(0, 0) = ImagePixel{{0.2f, 0.4f, 0.8f}};
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 3, 2);
+    const SampledFrame sampled = ImageSampler::sample(frame, 3, 2);
 
     require(sampled.width == 3);
     require(sampled.height == 2);
@@ -115,7 +116,7 @@ void weightBothAxesForTinyImage()
     fillFrame(frame, {0.0f, 0.0f, 0.0f});
     frame.at(1, 1) = ImagePixel{{1.0f, 0.0f, 0.0f}};
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 2, 2);
+    const SampledFrame sampled = ImageSampler::sample(frame, 2, 2);
 
     for (std::size_t y = 0; y < sampled.height; ++y) {
         for (std::size_t x = 0; x < sampled.width; ++x) {
@@ -135,7 +136,7 @@ void honorRequestedRowsWithoutCroppingSource()
         }
     }
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 2, 2);
+    const SampledFrame sampled = ImageSampler::sample(frame, 2, 2);
 
     require(sampled.width == 2);
     require(sampled.height == 2);
@@ -151,7 +152,7 @@ void honorOddRequestedRows()
     frame.at(0, 0) = ImagePixel{{1.0f, 0.0f, 0.0f}};
     frame.at(0, 1) = ImagePixel{{0.0f, 0.0f, 1.0f}};
 
-    const ImageFrame sampled = ImageSampler::sample(frame, 1, 3);
+    const SampledFrame sampled = ImageSampler::sample(frame, 1, 3);
 
     require(sampled.height == 3);
     assertColor(sampled.at(0, 0).color, 1.0f, 0.0f, 0.0f);

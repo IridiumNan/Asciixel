@@ -9,6 +9,10 @@ struct ImagePixel {
     Color color;
 };
 
+struct SampledPixel {
+    Color color;
+};
+
 struct AsciiPixel {
     char character;
     Color color;

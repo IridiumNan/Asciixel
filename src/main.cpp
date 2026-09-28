@@ -78,7 +78,7 @@ void convertImage(const std::string& path)
 {
     const asciixel::ImageFrame image = asciixel::loadImage(path);
     const asciixel::GridSize grid = asciixel::calculateGrid(image.width, image.height);
-    const asciixel::ImageFrame sampled =
+    const asciixel::SampledFrame sampled =
         asciixel::ImageSampler::sample(image, grid.columns, grid.rows);
     const asciixel::AsciiCharset charset =
         asciixel::CharsetBuilder::buildCharset(defaultCharsetConfig());
